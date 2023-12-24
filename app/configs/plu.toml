@@ -1,0 +1,20 @@
+[general]
+enable_bucket = true                        # 是否使用Aspect Ratio Bucketing
+
+[[datasets]]
+resolution = 512                            # 训练分辨率
+batch_size = 4                              # 批次大小
+
+  [[datasets.subsets]]
+  image_dir = '/home/gazai/opt/DATA/ft_inputs/plu_train'
+  class_tokens = 'plu girl'                # 指定标识符类
+  num_repeats = 10                          # 训练图像的重复次数
+
+  # 以下仅在使用正则化图像时进行描述。不使用则删除
+  [[datasets.subsets]]
+  is_reg = true
+  image_dir = '/home/gazai/opt/DATA/ft_inputs/reg_gen_girl'
+  class_tokens = 'girl'                     # 指定class
+  num_repeats = 1                           # 正则化图像的重复次数，基本上1就可以了
+
+
