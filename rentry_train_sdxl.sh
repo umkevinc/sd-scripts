@@ -9,7 +9,7 @@ function training_Kohya_lora {
         echo "Folder not found or not accessible."; exit 1
     }
 
-    local training_set="plu_train_sdxl" #Set this to the base folder for a character.
+    local training_set="plu-sdxl-v0" #Set this to the base folder for a character.
     local ckpt="$MODEL_DIR/bluePencilXL_v200.safetensors" # Base model(checkpoint) to finetune
     local image_dir="/home/gazai/opt/DATA/ft_inputs/plu_train_sdxl/"
     local reg_dir="/home/gazai/opt/DATA/ft_inputs/reg_girl" #Regulation image folder. Optional, you can point it to an empty folder if you don't want them.
@@ -39,10 +39,10 @@ function training_Kohya_lora {
 		      --shuffle_caption \
 		      --prior_loss_weight=1 \
 		      --network_alpha="$network_dim"  \
-		      --resolution=1024 \
+		      --resolution=512 \
 		      --enable_bucket \
-		      --min_bucket_reso=768 \
-		      --max_bucket_reso=1024 \
+		      --min_bucket_reso=320 \
+		      --max_bucket_reso=768 \
 		      --train_batch_size="$train_batch_size"  \
 		      --gradient_accumulation_steps=1 \
 		      --learning_rate="$learning_rate" \
