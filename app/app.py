@@ -234,7 +234,7 @@ def get_sdxl_lora_training():
     --shuffle_caption \
     --prior_loss_weight=1 \
     --network_alpha={network_dim}  \
-    --resolution=512 \
+    --resolution=1024 \
     --enable_bucket \
     --min_bucket_reso=320 \
     --max_bucket_reso=768 \
