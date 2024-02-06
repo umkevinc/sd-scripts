@@ -339,7 +339,6 @@ def get_sdxl_lora_training_2():
     --save_model_as=safetensors \
     --clip_skip=2 \
     --seed=420  \
-    --flip_aug \
     --color_aug \
     --face_crop_aug_range=2.0,4.0  \
     --network_dim={network_dim} \
