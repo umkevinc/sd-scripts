@@ -9,9 +9,9 @@ function training_Kohya_lora {
         echo "Folder not found or not accessible."; exit 1
     }
 
-    local training_set="char_no1_v2.1" #Set this to the base folder for a character.
+    local training_set="char_no2_v1" #Set this to the base folder for a character.
     local ckpt="$MODEL_DIR/animaPencilXL_v150.safetensors" # Base model(checkpoint) to finetune
-    local image_dir="/home/gazai/opt/DATA/ft_inputs/char_no1_v2/"
+    local image_dir="/home/gazai/opt/DATA/ft_inputs/char_no2/"
     local reg_dir="/home/gazai/opt/DATA/ft_inputs/reg_empty" #Regulation image folder. Optional, you can point it to an empty folder if you don't want them.
     local output="/home/gazai/opt/DATA/model_output/LORA/${training_set}" #Folder to save outputs. WARNING: Will overwrite existing files.
 
