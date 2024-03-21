@@ -14,11 +14,24 @@ st.set_page_config(layout="wide")
 TARGET_DATA_ROOT = '/home/gazai/opt/DATA/ft_inputs'
 DATASET_CONFIG_ROOT = '/home/gazai/opt/DATA/dataset_configs'
 FINETUNE_MODEL_OUTPUT_DIR = "/home/gazai/opt/DATA/model_output"
+MODEL_BASE_PATH = '/home/gazai/opt/stable-diffusion-webui/models/Stable-diffusion/'
 
 UUID = uuid.uuid1()
 
 
 # Heulper functions
+def run_and_display_training_stdout(*cmd_with_args, cwd='/home/gazai/workspace/sd-scripts'):
+    result = subprocess.Popen(cmd_with_args, stdout=subprocess.PIPE, cwd=cwd)
+    for line in iter(lambda: result.stdout.readline(), b""):
+        st.caption(line.decode("utf-8"))
+
+
+def get_base_models():
+    model_path_lst = glob(os.path.join(MODEL_BASE_PATH, '*.safetensors'))
+    models = [os.path.split(elm)[1] for elm in model_path_lst]
+    return models
+
+
 def display_folder(target_path):
     elms = glob(os.path.join(target_path, '*'))
     st.code('\n'.join(os_sorted(elms)))
@@ -161,11 +174,6 @@ def get_basic_training(output_dir):
     """
     return basic_training
 
-def run_and_display_training_stdout(*cmd_with_args, cwd='/home/gazai/workspace/sd-scripts'):
-    result = subprocess.Popen(cmd_with_args, stdout=subprocess.PIPE, cwd=cwd)
-    for line in iter(lambda: result.stdout.readline(), b""):
-        st.caption(line.decode("utf-8"))
-
 with tab2:
     st.subheader("Basic Finetune")
     model_output_dir = "/home/gazai/opt/DATA/model_output"
@@ -183,10 +191,10 @@ with tab2:
 ####### Third Tab #######
 def get_sdxl_lora_training():
     # Base model
-    model_base_path = '/home/gazai/MyPrograms/a1111/stable-diffusion-webui/models/Stable-diffusion/'
+    model_base_path = MODEL_BASE_PATH
     base_models = glob(f'{model_base_path}/*.safetensors')
     # model_names = [(os.path.split(path)[1]) for path in base_models]
-    model_names = ['bluePencilXL_v200.safetensors']
+    model_names = get_base_models()
     default_ix = model_names.index('bluePencilXL_v200.safetensors')
     selected_model = st.selectbox("base_model:", model_names, index=default_ix)
     if selected_model:
@@ -280,10 +288,10 @@ with tab3:
 ####### Fourth Tab #######
 def get_sdxl_lora_training_2():
     # Base model
-    model_base_path = '/home/gazai/MyPrograms/a1111/stable-diffusion-webui/models/Stable-diffusion/'
+    model_base_path = MODEL_BASE_PATH
     base_models = glob(f'{model_base_path}/*.safetensors')
     # model_names = [(os.path.split(path)[1]) for path in base_models]
-    model_names = ['bluePencilXL_v200.safetensors']
+    model_names = get_base_models()
     default_ix = model_names.index('bluePencilXL_v200.safetensors')
     selected_model = st.selectbox("base_model:", model_names, index=default_ix, key="sdxl_sb1")
     if selected_model:
