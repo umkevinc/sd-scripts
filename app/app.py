@@ -8,6 +8,15 @@ from streamlit_js_eval import streamlit_js_eval
 
 from glob import glob
 
+import io
+import errno
+def ensure_mkdir(target_dir):
+    try: 
+        os.makedirs(target_dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
 # Configuration
 st.set_page_config(layout="wide")
 
@@ -20,6 +29,15 @@ UUID = uuid.uuid1()
 
 
 # Heulper functions
+
+def get_all_subdirs(root=TARGET_DATA_ROOT):    
+    dirs = []
+    for path, subdirs, files in os.walk(root):
+        for filename in subdirs:
+            dirs.append(os.path.join(path, filename))
+    return dirs
+
+
 def run_and_display_training_stdout(*cmd_with_args, cwd='/home/gazai/workspace/sd-scripts'):
     result = subprocess.Popen(cmd_with_args, stdout=subprocess.PIPE, cwd=cwd)
     for line in iter(lambda: result.stdout.readline(), b""):
@@ -94,11 +112,11 @@ def upload_dataset_config_files(output_dir):
 # with st.sidebar:
 st.title('🎛 Gazai Finetune')
 
-tab1, tab2, tab3, tab4 = st.tabs(["File Upload", "Fine-tune", "SDXL-Lora-DB (Kevin)", "SDXL-Lora-DB (config-based)"])
+tab1, tab2, tab3 = st.tabs(["File Upload", "SDXL-Lora-DB", "SDXL-Lora-DB (experimental)"])
 
 ####### First Tab #######
 with tab1:
-    col1, col2,col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         st.subheader("1. Create new project folder")
         st.text('Current projects:')
@@ -109,9 +127,9 @@ with tab1:
             st.write(target_project_path)
 
             if os.path.exists(target_project_path):
-                st.warn(f'Error: project path exists! {target_project_path}')
+                st.warning(f'Error: project path exists! {target_project_path}')
             else:
-                mkdir(target_project_path)
+                ensure_mkdir(target_project_path)
                 streamlit_js_eval(js_expressions="parent.window.location.reload()")
 
     with col2:
@@ -119,81 +137,24 @@ with tab1:
         st.caption("Please upload the training images and caption files to target folder.")
         selected_target_folder = st.selectbox(
                 "Select a target folder:",
-                [''] + os_sorted(list(target_folder_options.keys())))
+                [''] + os_sorted(get_all_subdirs()))
         if selected_target_folder:
-            output_dir = target_folder_options[selected_target_folder]
+            output_dir = selected_target_folder
             upload_files(output_dir)
             list_target_folder(output_dir)
-    with col3:
-        st.subheader("3. Upload dataset_config")
-        st.caption(f"dataset_config root: {DATASET_CONFIG_ROOT}")
-        upload_dataset_config_files(DATASET_CONFIG_ROOT)
-        list_target_folder(DATASET_CONFIG_ROOT)
-        st.caption("Note. dataset_config format, please check: https://github.com/kohya-ss/sd-scripts/blob/main/docs/config_README-ja.md")
+    # with col3:
+    #     st.subheader("3. Upload dataset_config")
+    #     st.caption(f"dataset_config root: {DATASET_CONFIG_ROOT}")
+    #     upload_dataset_config_files(DATASET_CONFIG_ROOT)
+    #     list_target_folder(DATASET_CONFIG_ROOT)
+    #     st.caption("Note. dataset_config format, please check: https://github.com/kohya-ss/sd-scripts/blob/main/docs/config_README-ja.md")
 
 ####### Second Tab #######
-def get_basic_training(output_dir):
-    pretrained_model_name_or_path = st.text_input(
-        "pretrained_model_name_or_path:",
-        value="/home/gazai/MyPrograms/a1111/stable-diffusion-webui/models/Stable-diffusion/AnythingV5Ink_ink.safetensors")
-    dataset_config = st.text_input(
-        "dataset_config:",
-        value="/home/gazai/opt/DATA/dataset_configs/plu.toml")
-    model_output_name = st.text_input(
-        "model_output_name:",
-        value="plu-ft-v0-1ks")
-    optimizer_type = st.text_input(
-        "optimizer_type:",
-        value="AdamW8bit")
-    mixed_precision = st.text_input(
-        "mixed_precision:",
-        value="fp16")
-    max_train_steps = int(st.number_input(
-        "max_train_steps:",
-        step=100, min_value=100, max_value=2000, value=1500))
 
-    # Not configurable
-
-    save_model_as = "safetensors"
-
-    basic_training = f"""accelerate launch --num_cpu_threads_per_process 1 train_db.py \
-    --pretrained_model_name_or_path={pretrained_model_name_or_path} \
-    --dataset_config={dataset_config} \
-    --output_dir={output_dir} \
-    --output_name={model_output_name} \
-    --save_model_as={save_model_as} \
-    --prior_loss_weight=1.0 \
-    --resolution=512 \
-    --max_train_steps={max_train_steps} \
-    --learning_rate=1e-6 \
-    --optimizer_type={optimizer_type} \
-    --xformers \
-    --mixed_precision={mixed_precision} \
-    --cache_latents \
-    --gradient_checkpointing
-    """
-    return basic_training
-
-with tab2:
-    st.subheader("Basic Finetune")
-    model_output_dir = "/home/gazai/opt/DATA/model_output"
-    basic_training = get_basic_training(model_output_dir)
-    st.text("[Command]:")
-    st.text(basic_training)
-    start_button = st.button("Run Finetune")
-    if start_button:
-        run_and_display_training_stdout(*basic_training.split())
-        streamlit_js_eval(js_expressions="parent.window.location.reload()")
-
-    st.subheader("Model Output Location")
-    display_folder(model_output_dir)
-
-####### Third Tab #######
 def get_sdxl_lora_training():
     # Base model
     model_base_path = MODEL_BASE_PATH
     base_models = glob(f'{model_base_path}/*.safetensors')
-    # model_names = [(os.path.split(path)[1]) for path in base_models]
     model_names = get_base_models()
     default_ix = model_names.index('bluePencilXL_v200.safetensors')
     selected_model = st.selectbox("base_model:", model_names, index=default_ix)
@@ -204,22 +165,23 @@ def get_sdxl_lora_training():
     # Training data
     train_data_basedir = '/home/gazai/opt/DATA/ft_inputs'
     train_data_dir_options = ['<Please select>'] + [elm for elm in os.listdir(train_data_basedir) if not elm.startswith('reg_')]
-    default_ix2 = train_data_dir_options.index('plu_train_sdxl')
+    default_ix2 = train_data_dir_options.index('<Please select>')
     selected_data_dir = st.selectbox('SDXL training data:', train_data_dir_options, index=default_ix2)
     train_data_dir = os.path.join(train_data_basedir, selected_data_dir)
     st.text(train_data_dir)
 
     # Regulerization data dir
     reg_data_dir_options = [os.path.split(elm)[1] for elm in glob('/home/gazai/opt/DATA/ft_inputs/reg_*')]
-    default_ix3 = reg_data_dir_options.index('reg_gen_girl_sdxl')
+    default_ix3 = reg_data_dir_options.index('reg_girl')
     select_reg_data_dir = st.selectbox('SDXL regularization data:', reg_data_dir_options, index=default_ix3)
-    reg_data_dir = os.path.join(select_reg_data_dir, select_reg_data_dir)
+    reg_data_dir = os.path.join(train_data_basedir, select_reg_data_dir)
     st.text(reg_data_dir)
 
     model_output_name = st.text_input(
         "SDXL model_output_name:",
         placeholder="eg. plu-sdxl-v0")
-
+    ensure_mkdir(f"{FINETUNE_MODEL_OUTPUT_DIR}/LORA/{model_output_name}")
+    
     # Not configurable
     save_model_as = "safetensors"
     learning_rate="0.0001" #Learning rate. Remember this is supposed to be a magnitude larger than a dreambooth equivalent. Worked well for me at this rate.
@@ -236,7 +198,7 @@ def get_sdxl_lora_training():
     --pretrained_model_name_or_path={pretrained_model_name_or_path} \
     --train_data_dir={train_data_dir} \
     --reg_data_dir={reg_data_dir} \
-    --output_dir={FINETUNE_MODEL_OUTPUT_DIR}/LORA \
+    --output_dir={FINETUNE_MODEL_OUTPUT_DIR}/LORA/{model_output_name} \
     --output_name={model_output_name}_last_e{num_epochs}_n{network_dim} \
     --caption_extension=.txt \
     --shuffle_caption \
@@ -260,37 +222,35 @@ def get_sdxl_lora_training():
     --save_every_n_epochs={save_every_x_epochs} \
     --save_model_as=safetensors \
     --clip_skip=2 \
-    --seed=420  \
-    --flip_aug \
-    --color_aug \
-    --face_crop_aug_range=2.0,4.0  \
+    --seed=420 \
+    --face_crop_aug_range=2.0,4.0 \
     --network_dim={network_dim} \
     --max_token_length=150  \
     --lr_scheduler={scheduler} \
     --training_comment=LORA:{model_output_name}
     """
-
     return sdxl_training
 
-with tab3:
+with tab2:
     st.subheader("SDXL Lora Finetune")
     sdxl_lora_training = get_sdxl_lora_training()
     st.text("[Command]:")
     st.text(sdxl_lora_training)
     start_button = st.button("Run Finetune", key="sdxl4")
     if start_button:
-        run_and_display_training_stdout(*sdxl_lora_training.split())
-        streamlit_js_eval(js_expressions="parent.window.location.reload()")
+        cmd = sdxl_lora_training.split()        
+        st.write(cmd)
+        run_and_display_training_stdout(*cmd)
+        # streamlit_js_eval(js_expressions="parent.window.location.reload()")
 
     st.subheader("Model Output Location")
     display_folder(f"{FINETUNE_MODEL_OUTPUT_DIR}/LORA")
 
-####### Fourth Tab #######
+####### Third Tab #######
 def get_sdxl_lora_training_2():
     # Base model
     model_base_path = MODEL_BASE_PATH
     base_models = glob(f'{model_base_path}/*.safetensors')
-    # model_names = [(os.path.split(path)[1]) for path in base_models]
     model_names = get_base_models()
     default_ix = model_names.index('bluePencilXL_v200.safetensors')
     selected_model = st.selectbox("base_model:", model_names, index=default_ix, key="sdxl_sb1")
@@ -346,8 +306,7 @@ def get_sdxl_lora_training_2():
     --save_every_n_epochs={save_every_x_epochs} \
     --save_model_as=safetensors \
     --clip_skip=2 \
-    --seed=420  \
-    --color_aug \
+    --seed=420  \    
     --face_crop_aug_range=2.0,4.0  \
     --network_dim={network_dim} \
     --max_token_length=150  \
@@ -357,7 +316,7 @@ def get_sdxl_lora_training_2():
 
     return sdxl_training
 
-with tab4:
+with tab3:
     st.subheader("SDXL Lora Finetune")
     sdxl_lora_training = get_sdxl_lora_training_2()
     st.text("[Command]:")
